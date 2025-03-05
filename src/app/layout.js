@@ -1,4 +1,8 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import 'primereact/resources/themes/saga-blue/theme.css';
+import 'primereact/resources/primereact.min.css';
+import 'primeicons/primeicons.css';
+import '@/app/globals.css'; // Adjust the path if needed
 import "./globals.css";
 
 const geistSans = Geist({
