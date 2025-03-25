@@ -19,7 +19,7 @@ export default function Register() {
     e.preventDefault();
     try {
       await signUp(email, password, nombre);
-      router.push("/dashboard"); // Redirigir al dashboard después del registro
+      router.push("/dashboard");
     } catch (err) {
       setError(err.message);
     }
@@ -36,12 +36,11 @@ export default function Register() {
           <div>
             <label className="block text-[#5A3E2B] font-semibold mb-1">Nombre</label>
             <InputText 
-              type="text" 
               value={nombre} 
               onChange={(e) => setNombre(e.target.value)} 
-              className="w-full p-3 border border-[#B07D62]  rounded-lg focus:ring-2 focus:ring-[#FF914D]"
               placeholder="Ingrese su nombre"
               required 
+              className="w-full p-3 border border-[#B07D62] rounded-lg focus:ring-2 focus:ring-[#FF914D]"
             />
           </div>
 
@@ -51,9 +50,9 @@ export default function Register() {
               type="email" 
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
-              className="w-full p-3 border border-[#B07D62]  rounded-lg focus:ring-2 focus:ring-[#FF914D]"
               placeholder="Ingrese su correo"
               required 
+              className="w-full p-3 border border-[#B07D62] rounded-lg focus:ring-2 focus:ring-[#FF914D]"
             />
           </div>
 
@@ -64,9 +63,9 @@ export default function Register() {
               onChange={(e) => setPassword(e.target.value)} 
               feedback={false} 
               toggleMask 
-              className="w-full p-3 border border-[#B07D62]  rounded-lg focus:ring-2 focus:ring-[#FF914D]"
               placeholder="Ingrese su contraseña"
               required
+              className="w-full p-3 border border-[#B07D62] rounded-lg focus:ring-2 focus:ring-[#FF914D]"
             />
           </div>
 
