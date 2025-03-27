@@ -31,7 +31,7 @@ export default function UserSearchBar() {
   return (
     <div className="relative w-full max-w-md">
       <span className="p-input-icon-left w-full">
-        <i className="pi pi-search" />
+        
         <InputText
           placeholder="Buscar usuarios..."
           value={search}

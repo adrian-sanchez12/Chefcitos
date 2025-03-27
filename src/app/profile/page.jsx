@@ -91,19 +91,22 @@ setSeguidos(seguidosData?.map((s) => s.perfiles) || []);
   const handleImageUpload = async ({ files }) => {
     const file = files[0];
     const fileName = `${perfil.id}/${file.name}`;
-    const { error } = await supabase.storage.from("fotos-perfil").upload(fileName, file, {
-      upsert: true,
-    });
-
-    if (!error) {
+    const { error: uploadError } = await supabase
+      .storage
+      .from("fotos-perfil")
+      .upload(fileName, file, { upsert: true });
+  
+    if (!uploadError) {
       const { data } = supabase.storage.from("fotos-perfil").getPublicUrl(fileName);
+      console.log("URL pública:", data.publicUrl); 
       await supabase.from("perfiles").update({ foto_perfil: data.publicUrl }).eq("id", perfil.id);
       setPerfil({ ...perfil, foto_perfil: data.publicUrl });
       toast.current.show({ severity: "success", summary: "Foto actualizada" });
     } else {
-      toast.current.show({ severity: "error", summary: "Error al subir la imagen" });
+      toast.current.show({ severity: "error", summary: "Error al subir la imagen", detail: uploadError.message });
     }
   };
+  
 
   if (loading || !perfil) return <p className="p-6 text-center">Cargando perfil...</p>;
 
