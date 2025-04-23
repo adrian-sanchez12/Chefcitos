@@ -20,15 +20,38 @@ export default function Login() {
     e.preventDefault();
     try {
       await signIn(email, password);
+  
+      const { data: sessionData } = await supabase.auth.getUser();
+      const userId = sessionData?.user?.id;
+  
+      if (!userId) throw new Error("No se pudo obtener el ID del usuario.");
+  
+      const { data: perfilData, error: perfilError } = await supabase
+        .from("perfiles")
+        .select("rol")
+        .eq("id", userId)
+        .single();
+  
+      if (perfilError) throw new Error("Error al obtener el perfil.");
+  
+      if (perfilData?.rol === "suspendido") {
+        await supabase.auth.signOut(); 
+        toast.current.show({
+          severity: "warn",
+          summary: "Cuenta suspendida",
+          detail: "Tu cuenta ha sido suspendida. Contacta con el soporte.",
+          life: 4000,
+        });
+        return;
+      }
+  
       toast.current.show({
         severity: "success",
         summary: "Éxito",
         detail: "Inicio de sesión exitoso",
         life: 2000,
       });
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 2000);
+      setTimeout(() => router.push("/dashboard"), 2000);
     } catch (err) {
       toast.current.show({
         severity: "error",
@@ -38,12 +61,12 @@ export default function Login() {
       });
     }
   };
-
+  
   const signInWithOAuth = async (provider) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/dashboard`, // Redirige después del login
+        redirectTo: `${window.location.origin}/dashboard`,
       },
     });
 
@@ -61,10 +84,8 @@ export default function Login() {
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <Toast ref={toast} />
       <div className="flex bg-white rounded-lg shadow-lg overflow-hidden w-[850px]">
-        {/* LADO IZQUIERDO - FORMULARIO */}
         <div className="w-1/2 p-8 flex flex-col justify-center">
-          <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">Bienvenido</h1>
-          
+          <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">Chefcitos</h1>
           <form onSubmit={handleLogin} className="flex flex-col gap-5">
             <div>
               <label className="block text-gray-700 font-semibold mb-1">Correo</label>
@@ -99,12 +120,7 @@ export default function Login() {
                 />
                 <label htmlFor="rememberMe" className="text-gray-600">Mantener sesión iniciada</label>
               </div>
-              <a
-                href="/recuperar"
-                className="text-blue-500 hover:underline"
-              >
-                ¿Olvidó su contraseña?
-              </a>
+              <a href="/recuperar" className="text-blue-500 hover:underline">¿Olvidó su contraseña?</a>
             </div>
             <Button
               type="submit"
@@ -114,33 +130,33 @@ export default function Login() {
             />
           </form>
 
-          {/* Divider visual */}
           <div className="my-4 border-t text-center text-gray-400 text-sm">
             <span className="px-2 bg-white relative top-[-14px]">o</span>
           </div>
 
-          {/* Login con Google */}
           <button
-  onClick={() => signInWithOAuth("google")}
-  className="flex items-center justify-center gap-2 w-full border border-gray-300 text-gray-700 rounded-lg py-2 hover:bg-gray-100 transition"
->
-  <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
-  <span className="text-sm font-medium">Iniciar sesión con Google</span>
-</button>
-
+            onClick={() => signInWithOAuth("google")}
+            className="flex items-center justify-center gap-2 w-full border border-gray-300 text-gray-700 rounded-lg py-2 hover:bg-gray-100 transition"
+            aria-label="Iniciar sesión con Google"
+          >
+            <img
+              src="https://www.svgrepo.com/show/475656/google-color.svg"
+              alt="Google"
+              className="w-5 h-5"
+            />
+            <span className="text-sm font-medium">Iniciar sesión con Google</span>
+          </button>
 
           <p className="text-sm text-center mt-6">
             ¿No tienes cuenta?{" "}
-            <a href="/register" className="text-blue-500 font-semibold hover:underline">
-              Regístrate
-            </a>
+            <a href="/register" className="text-blue-500 font-semibold hover:underline">Regístrate</a>
           </p>
         </div>
 
-        {/* LADO DERECHO - IMAGEN O ICONO */}
+        {/* Lado derecho - Imagen */}
         <div className="w-1/2 bg-blue-500 flex items-center justify-center p-4">
-          <i className="pi pi-sign-in text-white text-7xl"></i>
-        </div>
+  <img src="/chef2.png" alt="Chef" className="max-h-[300px] object-contain" />
+</div>
       </div>
     </div>
   );

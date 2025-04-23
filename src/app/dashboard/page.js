@@ -1,12 +1,14 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-import { signOut } from "@/lib/auth";
 import { Avatar } from "primereact/avatar";
 import { Button } from "primereact/button";
 import { InputTextarea } from "primereact/inputtextarea";
 import ShareDialog from "../components/ShareDialog";
+import { Toast } from "primereact/toast";
+import { confirmDialog, ConfirmDialog } from "primereact/confirmdialog";
+
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -21,9 +23,13 @@ export default function Dashboard() {
 const [publicacionACompartir, setPublicacionACompartir] = useState(null);
 const [editando, setEditando] = useState({});
 const [contenidoEditado, setContenidoEditado] = useState({});
-
+const [mostrarDialogoReporte, setMostrarDialogoReporte] = useState(false);
+const [publicacionAReportar, setPublicacionAReportar] = useState(null);
+const [razonReporte, setRazonReporte] = useState("");
 
   const router = useRouter();
+  const toast = useRef(null);
+
 
   useEffect(() => {
     const fetchUserAndData = async () => {
@@ -47,7 +53,6 @@ const [contenidoEditado, setContenidoEditado] = useState({});
     };
 
     const fetchPublicaciones = async (userId) => {
-      // Obtener a quién sigue el usuario
       const { data: siguiendo, error: errorSeg } = await supabase
         .from("seguimientos")
         .select("seguido_id")
@@ -58,7 +63,6 @@ const [contenidoEditado, setContenidoEditado] = useState({});
         return;
       }
     
-      // IDs: los que sigue + él mismo
       const ids = siguiendo?.map((s) => s.seguido_id) || [];
       ids.push(userId);
     
@@ -126,6 +130,34 @@ const [contenidoEditado, setContenidoEditado] = useState({});
 
     fetchUserAndData();
   }, [router]);
+
+  const abrirDialogoReporte = (pub) => {
+    setPublicacionAReportar(pub);
+    setRazonReporte("");
+    setMostrarDialogoReporte(true);
+  };
+  
+  const enviarReporte = async () => {
+    if (!razonReporte.trim()) return alert("Debes ingresar una razón para reportar.");
+  
+    const { error } = await supabase.from("reportes_publicaciones").insert([
+      {
+        usuario_id: user.id,
+        publicacion_id: publicacionAReportar.id,
+        razon: razonReporte,
+      },
+    ]);    
+  
+    if (!error) {
+      alert("Reporte enviado con éxito. Gracias por ayudarnos a mejorar la comunidad.");
+      setMostrarDialogoReporte(false);
+      setPublicacionAReportar(null);
+      setRazonReporte("");
+    } else {
+      console.error("Error al reportar publicación:", error);
+    }
+  };
+  
   const toggleComentarios = (pubId) => {
     setComentariosAbiertos((prev) => ({
       ...prev,
@@ -248,23 +280,51 @@ const [contenidoEditado, setContenidoEditado] = useState({});
 
   const eliminarPublicacion = async (pubId) => {
     const publicacion = publicaciones.find((p) => p.id === pubId);
+  
     if (publicacion?.usuario_id !== user.id) {
-      alert("No puedes eliminar esta publicación");
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acción no permitida",
+        detail: "No puedes eliminar esta publicación",
+        life: 3000,
+      });
       return;
     }
   
-    const confirmacion = confirm("¿Estás seguro de que deseas eliminar esta publicación?");
-    if (!confirmacion) return;
-  
-    const { error } = await supabase.from("publicaciones").delete().eq("id", pubId);
-    if (!error) {
-      setPublicaciones((prev) => prev.filter((p) => p.id !== pubId));
-    }
-  };
+    confirmDialog({
+      message: "¿Estás seguro de que deseas eliminar esta publicación?",
+      header: "Confirmar eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Sí",
+      rejectLabel: "No",
+      acceptClassName: "p-button-danger",
+      accept: async () => {
+        const { error } = await supabase.from("publicaciones").delete().eq("id", pubId);
+        if (!error) {
+          setPublicaciones((prev) => prev.filter((p) => p.id !== pubId));
+          toast.current?.show({
+            severity: "success",
+            summary: "Eliminada",
+            detail: "La publicación fue eliminada",
+            life: 3000,
+          });
+        } else {
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: error.message,
+            life: 3000,
+          });
+        }
+      },
+    });
+  };  
   
 
   return (
     <div className="flex flex-col md:flex-row gap-8 p-6">
+        <Toast ref={toast} />
+        <ConfirmDialog />
       <div className="flex-1 max-w-5xl">
         {publicaciones.map((pub) => (
           <div key={pub.id} className="bg-white border rounded-lg p-4 shadow-sm mb-6">
@@ -314,12 +374,13 @@ const [contenidoEditado, setContenidoEditado] = useState({});
       className="w-full mb-2"
     />
     <div className="flex gap-2">
-  <Button
-    label="Guardar"
-    icon="pi pi-check"
-    className="p-button-sm bg-green-500 border-green-500 text-white"
-    onClick={() => guardarEdicion(pub.id)}
-  />
+    <Button
+  label="Guardar"
+  icon="pi pi-check"
+  className="bg-green-500 border-green-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:bg-green-600"
+  onClick={() => guardarEdicion(pub.id)}
+/>
+
   <Button
     label="Cancelar"
     icon="pi pi-times"
@@ -379,6 +440,14 @@ const [contenidoEditado, setContenidoEditado] = useState({});
                 onClick={() => abrirDialogoCompartir(pub)}
               />
 
+<Button
+  icon="pi pi-flag"
+  label="Reportar"
+  className="p-button-sm p-button-text text-red-500"
+  onClick={() => abrirDialogoReporte(pub)}
+/>
+
+
             </div>
 
             {comentariosAbiertos[pub.id] && (
@@ -398,12 +467,16 @@ const [contenidoEditado, setContenidoEditado] = useState({});
                   className="w-full mb-2"
                 />
                 <Button
-                  label="Enviar"
-                  icon="pi pi-send"
-                  iconPos="left"
-                  className="p-button-sm bg-pink-500 border-pink-500 text-white"
-                  onClick={() => enviarComentario(pub.id)}
-                />
+  label="Enviar"
+  icon="pi pi-send"
+  iconPos="left"
+  className="p-button-sm bg-pink-500 border-pink-500 text-white disabled:opacity-50"
+  disabled={!comentarios[pub.id]?.trim()}
+  onClick={() => enviarComentario(pub.id)}
+  tooltip="Escribe algo para comentar"
+  tooltipOptions={{ position: "top" }}
+/>
+
               </div>
             )}
           </div>
@@ -414,9 +487,38 @@ const [contenidoEditado, setContenidoEditado] = useState({});
   onHide={() => setMostrarDialogoCompartir(false)}
   onConfirm={compartirPublicacion}
 />
+{mostrarDialogoReporte && (
+  <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg p-6 w-[90%] max-w-md shadow-lg">
+      <h3 className="text-lg font-semibold mb-3 text-gray-800">Reportar publicación</h3>
+      <p className="text-sm text-gray-600 mb-2">
+        ¿Por qué deseas reportar esta publicación?
+      </p>
+      <InputTextarea
+        rows={3}
+        value={razonReporte}
+        onChange={(e) => setRazonReporte(e.target.value)}
+        className="w-full mb-4"
+        placeholder="Describe la razón del reporte..."
+      />
+      <div className="flex justify-end gap-2">
+        <Button
+          label="Cancelar"
+          onClick={() => setMostrarDialogoReporte(false)}
+          className="p-button-text"
+        />
+        <Button
+          label="Enviar"
+          icon="pi pi-send"
+          onClick={enviarReporte}
+          className="bg-red-500 border-red-500 text-white"
+        />
+      </div>
+    </div>
+  </div>
+)}
 
 
-      {/* Sugerencias */ }
       <aside className="w-full md:w-[300px] space-y-4">
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-lg font-semibold text-gray-800 mb-3">Personas que quizás conozcas</h3>

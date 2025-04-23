@@ -9,11 +9,12 @@ import Link from "next/link";
 import Image from "next/image"; 
 
 const menuItems = [
-  { label: "Feed", icon: "pi pi-home", href: "/dashboard" },
-  { label: "Explore", icon: "pi pi-compass", href: "/explore" },
-  { label: "Favorites", icon: "pi pi-heart", href: "/favorites" },
-  { label: "Messages", icon: "pi pi-comments", href: "/messages" },
-  { label: "Profile", icon: "pi pi-user", href: "/profile" },
+  { label: "Inicio", icon: "pi pi-home", href: "/dashboard" },
+  { label: "Me gustas", icon: "pi pi-heart", href: "/favorites" },
+  { label: "Recomendaciones", icon: "pi pi-star", href: "/recomendaciones" },
+  { label: "Mensajeria", icon: "pi pi-comments", href: "/messages" },
+  { label: "Comidas", icon: "pi pi-image", href: "/comidas" },
+  { label: "Perfil", icon: "pi pi-user", href: "/profile" },
 ];
 
 export default function Sidebar() {
@@ -48,9 +49,8 @@ export default function Sidebar() {
   return (
     <div className="w-[250px] h-full bg-white border-r p-5 flex flex-col justify-between">
       <div>
-        {/* LOGO + TÍTULO */}
         <div className="flex items-center gap-2 mb-6">
-        <Image src="/chef.png" alt="Logo Chef" width={20} height={20} />
+          <Image src="/chef.png" alt="Logo Chef" width={20} height={20} />
           <h2 className="text-2xl font-bold text-pink-500">Chefcitos</h2>
         </div>
 
@@ -63,6 +63,16 @@ export default function Sidebar() {
               </Link>
             </li>
           ))}
+
+          {/* Si el usuario es admin, mostrar el ítem de administración */}
+          {perfil?.rol === "admin" && (
+            <li>
+              <Link href="/admin" className="flex items-center gap-3 text-gray-700 hover:text-pink-500">
+                <i className="pi pi-shield"></i>
+                <span>Panel Admin</span>
+              </Link>
+            </li>
+          )}
         </ul>
       </div>
 

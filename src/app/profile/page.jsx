@@ -80,17 +80,26 @@ setSeguidos(seguidosData?.map((s) => s.perfiles) || []);
         biografia: perfil.biografia,
       })
       .eq("id", perfil.id);
-
+  
     if (error) {
-      toast.current.show({ severity: "error", summary: "Error", detail: error.message });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.message,
+      });
     } else {
-      toast.current.show({ severity: "success", summary: "Perfil actualizado" });
+      toast.current.show({
+        severity: "success",
+        summary: "Perfil actualizado",
+      });
     }
   };
+  
 
   const handleImageUpload = async ({ files }) => {
     const file = files[0];
     const fileName = `${perfil.id}/${file.name}`;
+  
     const { error: uploadError } = await supabase
       .storage
       .from("fotos-perfil")
@@ -98,14 +107,33 @@ setSeguidos(seguidosData?.map((s) => s.perfiles) || []);
   
     if (!uploadError) {
       const { data } = supabase.storage.from("fotos-perfil").getPublicUrl(fileName);
-      console.log("URL pública:", data.publicUrl); 
-      await supabase.from("perfiles").update({ foto_perfil: data.publicUrl }).eq("id", perfil.id);
-      setPerfil({ ...perfil, foto_perfil: data.publicUrl });
-      toast.current.show({ severity: "success", summary: "Foto actualizada" });
+  
+      const { error: updateError } = await supabase
+        .from("perfiles")
+        .update({ foto_perfil: data.publicUrl })
+        .eq("id", perfil.id);
+  
+      if (!updateError) {
+        setPerfil({ ...perfil, foto_perfil: data.publicUrl });
+        toast.current.show({
+          severity: "success",
+          summary: "Foto actualizada",
+        });
+      } else {
+        toast.current.show({
+          severity: "error",
+          summary: "Error al guardar la foto",
+          detail: updateError.message,
+        });
+      }
     } else {
-      toast.current.show({ severity: "error", summary: "Error al subir la imagen", detail: uploadError.message });
+      toast.current.show({
+        severity: "error",
+        summary: "Error al subir la imagen",
+        detail: uploadError.message,
+      });
     }
-  };
+  };  
   
 
   if (loading || !perfil) return <p className="p-6 text-center">Cargando perfil...</p>;
@@ -114,7 +142,18 @@ setSeguidos(seguidosData?.map((s) => s.perfiles) || []);
     <div className="min-h-screen bg-gray-100 py-10">
       <div className="p-6 max-w-3xl mx-auto bg-white rounded-xl shadow-md">
         <Toast ref={toast} />
-        <h1 className="text-3xl font-bold mb-6 text-gray-800">Mi Perfil</h1>
+        <div className="flex items-center justify-between mb-6">
+  <h1 className="text-3xl font-bold text-gray-800">Mi Perfil</h1>
+  <Button
+    icon="pi pi-cog"
+    className="p-button-text text-gray-600 hover:text-pink-500"
+    onClick={() => router.push("/settings")}
+    tooltip="Configuración y Privacidad"
+    tooltipOptions={{ position: "top" }}
+    rounded
+    text
+  />
+</div>
 
         <div className="flex flex-col sm:flex-row items-center gap-6 mb-8">
   <div className="flex items-center gap-4">

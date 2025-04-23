@@ -30,7 +30,7 @@ export default function PerfilPublico() {
 
       const { data: amistad } = await supabase
         .from("amistades")
-        .select("*")
+        .select("estado, usuario_id1, usuario_id2")
         .or(`and(usuario_id1.eq.${userData.user.id},usuario_id2.eq.${id}),and(usuario_id1.eq.${id},usuario_id2.eq.${userData.user.id})`)
         .maybeSingle();
 
@@ -121,7 +121,6 @@ export default function PerfilPublico() {
   return (
     <div className="min-h-screen bg-gray-100 py-10 px-4">
       <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-md p-6">
-        {/* Encabezado del perfil */}
         <div className="flex items-center gap-6 mb-6">
           <Avatar
             image={perfil.foto_perfil}
@@ -141,65 +140,84 @@ export default function PerfilPublico() {
           </div>
         </div>
 
-        {/* Biografía */}
         {perfil.biografia && (
           <p className="mb-6 text-gray-700 whitespace-pre-line border-t pt-4">{perfil.biografia}</p>
         )}
 
-        {/* Botones */}
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-3">
+  <Button
+    label="Volver al dashboard"
+    icon="pi pi-arrow-left"
+    className="w-full md:w-auto px-4 py-3 text-sm font-medium rounded-md bg-gray-200 text-gray-800 border-none"
+    onClick={() => router.push("/dashboard")}
+  />
+
+  {!esMismoUsuario && (
+    <>
+      {relacion.amistad?.estado === "aceptada" && (
+  <Button
+    label="Eliminar amistad"
+    icon="pi pi-user-minus"
+    className="w-full md:w-auto px-4 py-3 text-sm font-medium rounded-md bg-red-500 text-white border-none"
+    onClick={async () => {
+      const { error } = await supabase
+        .from("amistades")
+        .delete()
+        .or(`and(usuario_id1.eq.${usuarioActual.id},usuario_id2.eq.${id}),and(usuario_id1.eq.${id},usuario_id2.eq.${usuarioActual.id})`);
+      if (!error) setRelacion((r) => ({ ...r, amistad: null }));
+    }}
+  />
+)}
+
+
+      {relacion.amistad?.estado === "pendiente" &&
+        relacion.amistad.usuario_id1 !== usuarioActual.id && (
           <Button
-            label="Volver al dashboard"
-            icon="pi pi-arrow-left"
-            className="bg-gray-200 text-gray-800"
-            onClick={() => router.push("/dashboard")}
+            label="Aceptar solicitud"
+            icon="pi pi-check-circle"
+            className="w-full md:w-auto px-4 py-3 text-sm font-medium rounded-md bg-green-500 text-white border-none"
+            onClick={aceptarSolicitud}
           />
+        )}
 
-          {!esMismoUsuario && (
-            <>
-              {/* AMISTAD */}
-              {relacion.amistad?.estado === "aceptada" && (
-                <Button label="Ya son amigos" icon="pi pi-check" disabled />
-              )}
+{!relacion.amistad ? (
+  <Button
+    label="Enviar solicitud de amistad"
+    icon="pi pi-user-plus"
+    className="w-full md:w-auto px-4 py-3 text-sm font-medium rounded-md bg-blue-500 text-white border-none"
+    onClick={enviarSolicitud}
+  />
+) : (
+  relacion.amistad.estado === "pendiente" &&
+  relacion.amistad.usuario_id1 === usuarioActual.id && (
+    <Button
+      label="Solicitud enviada"
+      icon="pi pi-clock"
+      className="w-full md:w-auto px-4 py-3 text-sm font-medium rounded-md bg-gray-300 text-gray-600 border-none"
+      disabled
+    />
+  )
+)}
 
-              {relacion.amistad?.estado === "pendiente" &&
-                relacion.amistad.usuario_id1 !== usuarioActual.id && (
-                  <Button
-                    label="Aceptar solicitud"
-                    icon="pi pi-check-circle"
-                    className="bg-green-500 border-green-500 text-white"
-                    onClick={aceptarSolicitud}
-                  />
-                )}
+      {relacion.siguiendo ? (
+        <Button
+          label="Dejar de seguir"
+          icon="pi pi-user-minus"
+          className="w-full md:w-auto px-4 py-3 text-sm font-medium rounded-md bg-gray-300 text-gray-700 border-none"
+          onClick={dejarDeSeguir}
+        />
+      ) : (
+        <Button
+          label="Seguir"
+          icon="pi pi-user-plus"
+          className="w-full md:w-auto px-4 py-3 text-sm font-medium rounded-md bg-pink-500 text-white border-none"
+          onClick={seguirUsuario}
+        />
+      )}
+    </>
+  )}
+</div>
 
-              {!relacion.amistad && (
-                <Button
-                  label="Enviar solicitud de amistad"
-                  icon="pi pi-user-plus"
-                  className="bg-blue-500 border-blue-500 text-white"
-                  onClick={enviarSolicitud}
-                />
-              )}
-
-              {/* SEGUIR */}
-              {relacion.siguiendo ? (
-                <Button
-                  label="Dejar de seguir"
-                  icon="pi pi-user-minus"
-                  className="bg-gray-300 text-gray-700"
-                  onClick={dejarDeSeguir}
-                />
-              ) : (
-                <Button
-                  label="Seguir"
-                  icon="pi pi-user-plus"
-                  className="bg-pink-500 border-pink-500 text-white"
-                  onClick={seguirUsuario}
-                />
-              )}
-            </>
-          )}
-        </div>
       </div>
     </div>
   );

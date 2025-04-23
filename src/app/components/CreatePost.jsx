@@ -16,10 +16,16 @@ export default function CreatePost({ onPostCreated }) {
   const toast = useRef(null);
 
   const categorias = [
-    { label: "Pasteles", value: "pasteles" },
     { label: "Pastas", value: "pastas" },
+    { label: "Pasteles", value: "pasteles" },
     { label: "Ensaladas", value: "ensaladas" },
+    { label: "Sopas", value: "sopas" },
+    { label: "Carnes", value: "carnes" },
+    { label: "Pescados", value: "pescados" },
+    { label: "Postres", value: "postres" },
+    { label: "Bebidas", value: "bebidas" }
   ];
+  
 
   const handleUpload = ({ files }) => {
     const file = files[0];
@@ -27,18 +33,22 @@ export default function CreatePost({ onPostCreated }) {
     setPreviewUrl(URL.createObjectURL(file));
   };
 
+  const extractHashtags = (text) => {
+    return (text.match(/#\w+/g) || []).map(tag => tag.toLowerCase());
+  };
+  
   const handleSubmit = async () => {
     const user = await supabase.auth.getUser();
     const userId = user?.data?.user?.id;
     if (!userId) return;
-
+  
     let url = null;
     if (archivo) {
       const fileName = `${userId}/${Date.now()}-${archivo.name}`;
       const { error: uploadError } = await supabase.storage
         .from("multimedia")
         .upload(fileName, archivo);
-
+  
       if (uploadError) {
         toast.current.show({
           severity: "error",
@@ -47,25 +57,40 @@ export default function CreatePost({ onPostCreated }) {
         });
         return;
       }
-
+  
       const { data } = supabase.storage.from("multimedia").getPublicUrl(fileName);
       url = data.publicUrl;
     }
-
-    const { error } = await supabase.from("publicaciones").insert([
-      {
+  
+    // Insertar publicación y obtener ID
+    const { data: newPost, error } = await supabase
+      .from("publicaciones")
+      .insert([{
         usuario_id: userId,
         contenido,
         multimedia_url: url,
         visibilidad,
         fecha_creacion: new Date(),
         categoria,
-      },
-    ]);
-
+      }])
+      .select()
+      .single();
+  
     if (error) {
       toast.current.show({ severity: "error", summary: "Error", detail: error.message });
     } else {
+      // Extraer hashtags del contenido
+      const hashtags = extractHashtags(contenido);
+      const hashtagInserts = hashtags.map(tag => ({
+        publicacion_id: newPost.id,
+        tag
+      }));
+  
+      // Insertar hashtags si hay
+      if (hashtagInserts.length > 0) {
+        await supabase.from("hashtags").insert(hashtagInserts);
+      }
+  
       toast.current.show({ severity: "success", summary: "Publicado correctamente" });
       setContenido("");
       setArchivo(null);
@@ -74,7 +99,7 @@ export default function CreatePost({ onPostCreated }) {
       onPostCreated?.();
     }
   };
-
+  
   return (
     <div className="bg-white p-6 rounded-xl shadow-lg">
       <Toast ref={toast} />
