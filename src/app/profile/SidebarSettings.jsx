@@ -7,7 +7,7 @@ const menu = [
 { label: "Perfil", path: "/profile" },
   { label: "Cambiar contraseña", path: "/profile/settings/change-password" },
   { label: "Control de cuenta", path: "/profile/settings/account-control" },
-  { label: "Privacidad", path: "/profile/settings/privacy" },
+  // { label: "Privacidad", path: "/profile/settings/privacy" },
   { label: "Visibilidad", path: "/profile/settings/visibility" },
   { label: "Bloquear y reportar", path: "/profile/settings/block-report" },
 ];

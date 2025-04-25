@@ -53,6 +53,7 @@ const [razonReporte, setRazonReporte] = useState("");
     };
 
     const fetchPublicaciones = async (userId) => {
+      // Seguimientos
       const { data: siguiendo, error: errorSeg } = await supabase
         .from("seguimientos")
         .select("seguido_id")
@@ -63,19 +64,39 @@ const [razonReporte, setRazonReporte] = useState("");
         return;
       }
     
-      const ids = siguiendo?.map((s) => s.seguido_id) || [];
-      ids.push(userId);
+      const seguidos = siguiendo?.map((s) => s.seguido_id) || [];
+    
+      // Lista completa de posibles publicaciones a mostrar
+      const ids = [...seguidos, userId];
+    
+      // Obtener lista de bloqueados y quienes bloquearon al usuario actual
+      const { data: bloqueados } = await supabase
+        .from("bloqueos")
+        .select("bloqueado_id")
+        .eq("bloqueador_id", userId);
+    
+      const { data: bloqueadoPor } = await supabase
+        .from("bloqueos")
+        .select("bloqueador_id")
+        .eq("bloqueado_id", userId);
+    
+      const idsBloqueados = bloqueados?.map((b) => b.bloqueado_id) || [];
+      const idsBloqueadoPor = bloqueadoPor?.map((b) => b.bloqueador_id) || [];
+    
+      // Excluir bloqueados y bloqueadores de la lista
+      const idsFiltrados = ids.filter(
+        (id) => !idsBloqueados.includes(id) && !idsBloqueadoPor.includes(id)
+      );
     
       const { data, error: errorPub } = await supabase
-      .from("publicaciones")
-      .select(`
-        *,
-        perfiles:usuario_id(nombre, foto_perfil),
-        autor:autor_original_id(nombre, id)
-      `)
-      .in("usuario_id", ids)
-      .order("fecha_creacion", { ascending: false });
-    
+        .from("publicaciones")
+        .select(`
+          *,
+          perfiles:usuario_id(nombre, foto_perfil),
+          autor:autor_original_id(nombre, id)
+        `)
+        .in("usuario_id", idsFiltrados)
+        .order("fecha_creacion", { ascending: false });
     
       if (errorPub) {
         console.error("Error obteniendo publicaciones:", errorPub.message);
@@ -90,6 +111,7 @@ const [razonReporte, setRazonReporte] = useState("");
         }
       }
     };
+    
     
 
     const fetchLikes = async (pubId, userId) => {
@@ -466,16 +488,21 @@ const [razonReporte, setRazonReporte] = useState("");
                   placeholder="Escribe un comentario..."
                   className="w-full mb-2"
                 />
-                <Button
+    <Button
   label="Enviar"
   icon="pi pi-send"
   iconPos="left"
-  className="p-button-sm bg-pink-500 border-pink-500 text-white disabled:opacity-50"
-  disabled={!comentarios[pub.id]?.trim()}
   onClick={() => enviarComentario(pub.id)}
+  disabled={!comentarios[pub.id]?.trim()}
+  className={`w-full md:w-auto px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+    comentarios[pub.id]?.trim()
+      ? "bg-pink-500 text-white hover:bg-pink-600 border-pink-500"
+      : "bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300"
+  }`}
   tooltip="Escribe algo para comentar"
   tooltipOptions={{ position: "top" }}
 />
+
 
               </div>
             )}
@@ -508,11 +535,12 @@ const [razonReporte, setRazonReporte] = useState("");
           className="p-button-text"
         />
         <Button
-          label="Enviar"
-          icon="pi pi-send"
-          onClick={enviarReporte}
-          className="bg-red-500 border-red-500 text-white"
-        />
+  label="Enviar"
+  icon="pi pi-send"
+  onClick={enviarReporte}
+  className="w-full md:w-auto px-4 py-2 text-sm font-medium rounded-md bg-red-500 border-red-500 text-white hover:bg-red-600 transition-all duration-200"
+/>
+
       </div>
     </div>
   </div>
