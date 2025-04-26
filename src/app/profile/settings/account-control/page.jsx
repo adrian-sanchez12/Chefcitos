@@ -14,12 +14,26 @@ export default function AccountControlPage() {
   const router = useRouter();
 
   const handleDeleteAccount = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (!error) {
-      toast.current.show({ severity: "success", summary: "Cuenta desactivada" });
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData?.session?.user?.id) {
+      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo obtener el usuario" });
+      return;
+    }
+  
+    const userId = sessionData.session.user.id;
+  
+    const res = await fetch("/api/delete-user", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId }),
+    });
+  
+    if (res.ok) {
+      await supabase.auth.signOut();
+      toast.current.show({ severity: "success", summary: "Cuenta eliminada" });
       router.push("/login");
     } else {
-      toast.current.show({ severity: "error", summary: "Error", detail: error.message });
+      const { error } = await res.json();
+      toast.current.show({ severity: "error", summary: "Error", detail: error });
     }
   };
 

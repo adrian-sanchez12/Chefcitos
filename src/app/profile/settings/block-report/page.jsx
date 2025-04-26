@@ -20,35 +20,37 @@ export default function BlockReport() {
     const fetchData = async () => {
       const { data: session } = await supabase.auth.getUser();
       if (!session?.user) return;
-
+  
       const userId = session.user.id;
-
+  
+      // 1. Obtener bloqueos
       const { data: bloqueos } = await supabase
-      .from("bloqueos")
-      .select("bloqueado_id, perfiles_bloqueado:bloqueado_id(id, nombre, foto_perfil)")
-      .eq("bloqueador_id", userId);
-    
+        .from("bloqueos")
+        .select("bloqueado_id, perfiles_bloqueado:bloqueado_id(id, nombre, foto_perfil)")
+        .eq("bloqueador_id", userId);
+  
       setBlockedUsers(bloqueos || []);
-      const amigosFiltrados = (amistades || []).map((a) => {
-        const amigo = a.usuario_id1 === userId ? a.perfiles2 : a.perfiles1;
-        return { id: a.usuario_id1 === userId ? a.usuario_id2 : a.usuario_id1, ...amigo };
-      }).filter(a => a.id !== userId && !bloqueadosIds.includes(a.id));
-      
-      setAmigos(amigosFiltrados);
-      
-
       const bloqueadosIds = (bloqueos || []).map(b => b.bloqueado_id);
-    
+  
       const { data: amistades } = await supabase
         .from("amistades")
         .select("usuario_id1, usuario_id2, perfiles1:usuario_id1(id, nombre, foto_perfil), perfiles2:usuario_id2(id, nombre, foto_perfil)")
         .eq("estado", "aceptada");
-
-     
+  
+      const amigosFiltrados = (amistades || []).map((a) => {
+        const amigo = a.usuario_id1 === userId ? a.perfiles2 : a.perfiles1;
+        return {
+          id: a.usuario_id1 === userId ? a.usuario_id2 : a.usuario_id1,
+          ...amigo,
+        };
+      }).filter(a => a.id !== userId && !bloqueadosIds.includes(a.id));
+  
+      setAmigos(amigosFiltrados);
     };
-
+  
     fetchData();
   }, []);
+  
 
   const handleUnblock = async (userId) => {
     const { data: session } = await supabase.auth.getUser();

@@ -89,23 +89,13 @@ const [razonReporte, setRazonReporte] = useState("");
     };
 
     const fetchPublicaciones = async (userId) => {
-      // Seguimientos
       const { data: siguiendo, error: errorSeg } = await supabase
         .from("seguimientos")
         .select("seguido_id")
         .eq("seguidor_id", userId);
     
-      if (errorSeg) {
-        console.error("Error obteniendo seguimientos:", errorSeg.message);
-        return;
-      }
-    
       const seguidos = siguiendo?.map((s) => s.seguido_id) || [];
     
-      // Lista completa de posibles publicaciones a mostrar
-      const ids = [...seguidos, userId];
-    
-      // Obtener lista de bloqueados y quienes bloquearon al usuario actual
       const { data: bloqueados } = await supabase
         .from("bloqueos")
         .select("bloqueado_id")
@@ -119,19 +109,30 @@ const [razonReporte, setRazonReporte] = useState("");
       const idsBloqueados = bloqueados?.map((b) => b.bloqueado_id) || [];
       const idsBloqueadoPor = bloqueadoPor?.map((b) => b.bloqueador_id) || [];
     
-      // Excluir bloqueados y bloqueadores de la lista
-      const idsFiltrados = ids.filter(
-        (id) => !idsBloqueados.includes(id) && !idsBloqueadoPor.includes(id)
-      );
+      const { data: amistades } = await supabase
+        .from("amistades")
+        .select("usuario_id1, usuario_id2")
+        .eq("estado", "aceptada");
     
-      const { data, error: errorPub } = await supabase
+      const amigos = amistades
+        ?.filter(
+          (a) =>
+            a.usuario_id1 === userId || a.usuario_id2 === userId
+        )
+        .map((a) =>
+          a.usuario_id1 === userId ? a.usuario_id2 : a.usuario_id1
+        ) || [];
+    
+      const idsPosibles = [...new Set([...seguidos, ...amigos, userId])];
+    
+      const { data: publicacionesRaw, error: errorPub } = await supabase
         .from("publicaciones")
         .select(`
           *,
           perfiles:usuario_id(nombre, foto_perfil),
           autor:autor_original_id(nombre, id)
         `)
-        .in("usuario_id", idsFiltrados)
+        .in("usuario_id", idsPosibles)
         .order("fecha_creacion", { ascending: false });
     
       if (errorPub) {
@@ -139,14 +140,29 @@ const [razonReporte, setRazonReporte] = useState("");
         return;
       }
     
-      if (data) {
-        setPublicaciones(data);
-        for (const pub of data) {
-          fetchLikes(pub.id, userId);
-          fetchComentarios(pub.id);
-        }
+      const publicacionesFiltradas = publicacionesRaw.filter((p) => {
+        const autorId = p.usuario_id;
+        const esPropia = autorId === userId;
+        const esAmigo = amigos.includes(autorId);
+        const esSeguido = seguidos.includes(autorId);
+        const bloqueado = idsBloqueados.includes(autorId) || idsBloqueadoPor.includes(autorId);
+    
+        if (bloqueado) return false;
+    
+        if (p.visibilidad === "publica") return esSeguido || esPropia;
+        if (p.visibilidad === "privada") return esAmigo || esPropia;
+    
+        return false; 
+      });
+    
+      setPublicaciones(publicacionesFiltradas);
+    
+      for (const pub of publicacionesFiltradas) {
+        fetchLikes(pub.id, userId);
+        fetchComentarios(pub.id);
       }
     };
+    
     
     const fetchLikes = async (pubId, userId) => {
       const { data } = await supabase
@@ -291,16 +307,22 @@ const [razonReporte, setRazonReporte] = useState("");
     };
   
     const { data, error } = await supabase
-      .from("publicaciones")
-      .insert([nuevaPublicacion])
-      .select(`*, perfiles:usuario_id(nombre, foto_perfil), autor:autor_original_id(nombre, id)`)
-      .single();
+    .from("publicaciones")
+    .insert([nuevaPublicacion])
+    .select(`
+      *,
+      perfiles:usuario_id(nombre, foto_perfil),
+      autor:autor_original_id(nombre, id)
+    `)
+    .single();
+  
   
     if (!error && data) {
-      setPublicaciones((prev) => [data, ...prev]);
-      setMostrarDialogoCompartir(false);
-      setPublicacionACompartir(null);
-    }
+  setPublicaciones((prev) => [data, ...prev]);
+  setMostrarDialogoCompartir(false);
+  setPublicacionACompartir(null);
+}
+
     await enviarNotificacion({
       receptor_id: publicacionACompartir.usuario_id,
       emisor_id: user.id,
@@ -612,16 +634,16 @@ const [razonReporte, setRazonReporte] = useState("");
           className="p-button-text"
         />
         <Button
-  label="Enviar"
-  icon="pi pi-send"
-  onClick={enviarReporte}
-  className="w-full md:w-auto px-4 py-2 text-sm font-medium rounded-md bg-red-500 border-red-500 text-white hover:bg-red-600 transition-all duration-200"
-/>
+        label="Enviar"
+        icon="pi pi-send"
+        onClick={enviarReporte}
+        className="w-full md:w-auto px-4 py-2 text-sm font-medium rounded-md bg-red-500 border-red-500 text-white hover:bg-red-600 transition-all duration-200"
+      />
 
-      </div>
-    </div>
-  </div>
-)}
+            </div>
+          </div>
+        </div>
+      )}
 
 
       <aside className="w-full md:w-[300px] space-y-4">

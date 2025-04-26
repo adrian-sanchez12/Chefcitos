@@ -40,27 +40,45 @@ export default function MessagesPage() {
 
   const iniciarConversacion = async (amigoId) => {
     if (!userId || !amigoId) return;
-
+  
+    // 1. Verificar si hay un bloqueo entre ambos usuarios
+    const { data: bloqueado, error: errorBloqueo } = await supabase
+      .from("bloqueos")
+      .select("id")
+      .or(`bloqueador_id.eq.${userId},bloqueado_id.eq.${userId}`)
+      .or(`bloqueador_id.eq.${amigoId},bloqueado_id.eq.${amigoId}`);
+  
+    const estaBloqueado = bloqueado?.some(
+      (b) =>
+        (b.bloqueador_id === userId && b.bloqueado_id === amigoId) ||
+        (b.bloqueador_id === amigoId && b.bloqueado_id === userId)
+    );
+  
+    if (estaBloqueado) {
+      alert("No puedes iniciar una conversación con este usuario porque hay un bloqueo activo.");
+      return;
+    }
+  
     const [u1, u2] = [userId, amigoId].sort();
-
+  
     const { data: existente } = await supabase
       .from("conversaciones")
       .select("id")
       .eq("usuario1", u1)
       .eq("usuario2", u2)
       .maybeSingle();
-
+  
     if (existente?.id) {
       router.push(`/messages/${existente.id}`);
       return;
     }
-
+  
     const { data, error } = await supabase
       .from("conversaciones")
       .insert([{ usuario1: u1, usuario2: u2 }])
       .select()
       .single();
-
+  
     if (!error && data?.id) {
       router.push(`/messages/${data.id}`);
     }

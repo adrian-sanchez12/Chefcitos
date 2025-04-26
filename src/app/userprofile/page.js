@@ -35,7 +35,6 @@ const UserProfile = () => {
 
   return (
     <div className="p-5 max-w-4xl mx-auto">
-      {/* Profile Header */}
       <div className="flex items-center gap-5">
         <Avatar image={profile.avatar} size="xlarge" shape="circle" />
         <div>
@@ -55,7 +54,6 @@ const UserProfile = () => {
 
       <Divider />
 
-      {/* Highlights */}
       <div className="flex gap-3 overflow-x-auto">
         {profile.highlights.map((highlight, index) => (
           <Chip key={index} label={highlight.title} image={highlight.img} className="cursor-pointer" />
@@ -64,7 +62,6 @@ const UserProfile = () => {
 
       <Divider />
 
-      {/* Posts Grid */}
       <div className="grid grid-cols-3 gap-3">
         {profile.postsGallery.map((post, index) => (
           <Card key={index} className="shadow-none p-0 border-0">

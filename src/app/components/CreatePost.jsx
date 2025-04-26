@@ -97,6 +97,8 @@ export default function CreatePost({ onPostCreated }) {
       setPreviewUrl(null);
       setCategoria("");
       onPostCreated?.();
+
+      window.location.reload();
     }
   };
   

@@ -36,7 +36,6 @@ export default function Topbar() {
             className="bg-white border border-pink-500 text-pink-500 font-semibold px-4 py-2 text-sm rounded-full hover:bg-pink-50 transition-all duration-200"
           />
 
-          {/* Campana de notificaciones solo si el usuario está autenticado */}
           {user && <NotificationMenu userId={user.id} />}
         </div>
       </div>

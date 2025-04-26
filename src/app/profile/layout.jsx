@@ -1,4 +1,3 @@
-// app/profile/settings/layout.jsx
 "use client";
 import SidebarSettings from "./SidebarSettings";
 

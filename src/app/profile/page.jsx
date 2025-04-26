@@ -176,7 +176,6 @@ setSeguidos(seguidosData?.map((s) => s.perfiles) || []);
     />
   </div>
 
-  {/* Contadores de seguidores / siguiendo */}
   <div className="flex gap-6 mt-4 sm:mt-0">
     <button
       onClick={() => setMostrarSeguidores(true)}
@@ -239,7 +238,6 @@ setSeguidos(seguidosData?.map((s) => s.perfiles) || []);
   onClick={() => router.push("/dashboard")}
   className="mt-4 bg-gray-200 text-gray-800 px-6 py-2 text-sm rounded-lg hover:bg-gray-300 transition"
 />
-{/* Dialogo Seguidores */}
 <Dialog
   header="Tus Seguidores"
   visible={mostrarSeguidores}
@@ -257,7 +255,6 @@ setSeguidos(seguidosData?.map((s) => s.perfiles) || []);
   )) : <p className="text-sm text-gray-500">No tienes seguidores aún.</p>}
 </Dialog>
 
-{/* Dialogo Siguiendo */}
 <Dialog
   header="Personas que sigues"
   visible={mostrarSeguidos}
