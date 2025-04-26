@@ -98,6 +98,17 @@ export default function ChatPage() {
       setMensajes((prev) => [...prev, data]);
       setContenido("");
     }
+    await supabase.from("notificaciones").insert([
+      {
+        receptor_id: receptorId,
+        emisor_id: userId,
+        tipo: "mensaje",
+        mensaje: "Nuevo mensaje privado",
+        leida: false,
+        fecha: new Date(),
+      },
+    ]);
+    
 
     setLoading(false);
   };

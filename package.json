@@ -14,7 +14,8 @@
     "primeicons": "^7.0.0",
     "primereact": "^10.9.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "resend": "^4.4.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

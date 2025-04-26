@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Avatar } from "primereact/avatar";
 import { Button } from "primereact/button";
+import { enviarCorreo } from "@/lib/sendEmail"
 
 export default function PerfilPublico() {
   const { id } = useParams();
@@ -105,9 +106,41 @@ export default function PerfilPublico() {
       estado: "pendiente",
       fecha_solicitud: new Date(),
     }]);
+  
     setRelacion((r) => ({ ...r, amistad: { estado: "pendiente", usuario_id1: usuarioActual.id } }));
+  
+    await supabase.from("notificaciones").insert([
+      {
+        tipo: "amistad",
+        mensaje: `${usuarioActual.user_metadata?.nombre} te envió una solicitud de amistad.`,
+        emisor_id: usuarioActual.id,
+        receptor_id: id,
+        leida: false,
+        fecha: new Date(),
+      },
+    ]);
+  
+    const { data: perfilReceptor } = await supabase
+      .from("perfiles")
+      .select("email") 
+      .eq("id", id)
+      .single();
+  
+    if (perfilReceptor?.email) {
+      await fetch("/api/enviar-correo", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: perfilReceptor.email,
+          subject: "Tienes una nueva solicitud de amistad",
+          body: `<p>Hola, tienes una nueva solicitud de amistad de <strong>${usuarioActual.user_metadata?.nombre}</strong>.</p>`,
+        }),
+      });
+    }
   };
-
+  
   const aceptarSolicitud = async () => {
     await supabase
       .from("amistades")
@@ -115,6 +148,15 @@ export default function PerfilPublico() {
       .eq("usuario_id1", id)
       .eq("usuario_id2", usuarioActual.id);
     setRelacion((r) => ({ ...r, amistad: { estado: "aceptada" } }));
+    await supabase.from("notificaciones").insert([{
+      tipo: "amistad",
+      mensaje: `${usuarioActual.user_metadata?.nombre || "Un usuario"} aceptó tu solicitud de amistad.`,
+      emisor_id: usuarioActual.id,
+      receptor_id: id,
+      leida: false,
+      fecha: new Date(),
+    }]);
+    
   };
 
   const seguirUsuario = async () => {
@@ -125,6 +167,15 @@ export default function PerfilPublico() {
     }]);
     setRelacion((r) => ({ ...r, siguiendo: true }));
     setStats((prev) => ({ ...prev, seguidores: prev.seguidores + 1 }));
+    await supabase.from("notificaciones").insert([{
+      tipo: "seguimiento",
+      mensaje: `${usuarioActual.user_metadata?.nombre || "Un usuario"} empezó a seguirte.`,
+      emisor_id: usuarioActual.id,
+      receptor_id: id,
+      leida: false,
+      fecha: new Date(),
+    }]);
+    
   };
 
   const dejarDeSeguir = async () => {
@@ -197,6 +248,36 @@ export default function PerfilPublico() {
               ) : (
                 <Button label="Seguir" icon="pi pi-user-plus" className="w-full md:w-auto px-4 py-3 text-sm font-medium rounded-md bg-pink-500 text-white border-none" onClick={seguirUsuario} />
               )}
+              {relacion.amistad?.estado === "aceptada" && (
+  <Button
+    label="Ir al chat"
+    icon="pi pi-comments"
+    className="w-full md:w-auto px-4 py-3 text-sm font-medium rounded-md bg-purple-500 text-white border-none"
+    onClick={async () => {
+
+      const { data: conversacion } = await supabase
+        .from("conversaciones")
+        .select("id")
+        .or(`and(usuario1.eq.${usuarioActual.id},usuario2.eq.${id}),and(usuario1.eq.${id},usuario2.eq.${usuarioActual.id})`)
+        .maybeSingle();
+
+      if (conversacion) {
+        router.push(`/messages/${conversacion.id}`);
+      } else {
+
+        const { data: nueva, error } = await supabase
+          .from("conversaciones")
+          .insert([{ usuario1: usuarioActual.id, usuario2: id }])
+          .select("id")
+          .single();
+
+        if (!error && nueva) {
+          router.push(`/messages/${nueva.id}`);
+        }
+      }
+    }}
+  />
+)}
             </>
           )}
         </div>

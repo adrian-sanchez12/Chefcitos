@@ -39,15 +39,51 @@ const [razonReporte, setRazonReporte] = useState("");
         return;
       }
 
+      const verificarOCrearPerfil = async (user) => {
+        const { data: perfilExistente, error: perfilError } = await supabase
+          .from("perfiles")
+          .select("id")
+          .eq("id", user.id)
+          .maybeSingle();
+      
+        if (!perfilExistente && !perfilError) {
+          const { error: insertError } = await supabase.from("perfiles").insert([
+            {
+              id: user.id,
+              nombre: user.user_metadata?.name || "Usuario",
+              email: user.email,
+              foto_perfil: user.user_metadata?.avatar_url || null,
+              biografia: "",
+              ubicacion: "",
+              recibir_correos: true,
+              fecha_registro: new Date(),
+              rol: "usuario",
+            },
+          ]);
+      
+          if (insertError) {
+            console.error(" Error al crear perfil:", insertError.message);
+          } else {
+            console.log(" Perfil creado exitosamente");
+          }
+        }
+      };
+      
       setUser(data.user);
 
-      const { data: perfilData } = await supabase
-        .from("perfiles")
-        .select("*")
-        .eq("id", data.user.id)
-        .single();
+      await verificarOCrearPerfil(data.user)
 
-      setPerfil(perfilData);
+      const { data: perfilActualizado, error: errorPerfil } = await supabase
+      .from("perfiles")
+      .select("*")
+      .eq("id", data.user.id)
+      .single();
+    
+    if (errorPerfil) {
+      console.error(" Error al obtener el perfil:", errorPerfil.message);
+    } else {
+      setPerfil(perfilActualizado);
+    }
       fetchPublicaciones(data.user.id);
       fetchSugerencias(data.user.id);
     };
@@ -112,8 +148,6 @@ const [razonReporte, setRazonReporte] = useState("");
       }
     };
     
-    
-
     const fetchLikes = async (pubId, userId) => {
       const { data } = await supabase
         .from("megusta")
@@ -153,6 +187,22 @@ const [razonReporte, setRazonReporte] = useState("");
     fetchUserAndData();
   }, [router]);
 
+  const enviarNotificacion = async ({ receptor_id, tipo, mensaje, emisor_id }) => {
+    if (receptor_id === emisor_id) return; 
+  
+    await supabase.from("notificaciones").insert([
+      {
+        receptor_id,
+        emisor_id,
+        tipo,
+        mensaje,
+        fecha: new Date(),
+        leida: false,
+      },
+    ]);
+  };
+  
+
   const abrirDialogoReporte = (pub) => {
     setPublicacionAReportar(pub);
     setRazonReporte("");
@@ -186,14 +236,18 @@ const [razonReporte, setRazonReporte] = useState("");
       [pubId]: !prev[pubId],
     }));
   };
+
   const toggleLike = async (pubId) => {
+    const pub = publicaciones.find((p) => p.id === pubId);
     const current = likes[pubId];
+  
     if (current?.liked) {
       await supabase
         .from("megusta")
         .delete()
         .eq("usuario_id", user.id)
         .eq("publicacion_id", pubId);
+  
       setLikes((prev) => ({
         ...prev,
         [pubId]: { liked: false, count: prev[pubId].count - 1 },
@@ -202,12 +256,21 @@ const [razonReporte, setRazonReporte] = useState("");
       await supabase.from("megusta").insert([
         { usuario_id: user.id, publicacion_id: pubId },
       ]);
+  
+      await enviarNotificacion({
+        receptor_id: pub.usuario_id,
+        emisor_id: user.id,
+        tipo: "me_gusta",
+        mensaje: `${perfil?.nombre} le dio me gusta a tu publicación.`,
+      });
+  
       setLikes((prev) => ({
         ...prev,
         [pubId]: { liked: true, count: prev[pubId]?.count + 1 || 1 },
       }));
     }
   };
+  
 
   const abrirDialogoCompartir = (pub) => {
     setPublicacionACompartir(pub);
@@ -238,6 +301,13 @@ const [razonReporte, setRazonReporte] = useState("");
       setMostrarDialogoCompartir(false);
       setPublicacionACompartir(null);
     }
+    await enviarNotificacion({
+      receptor_id: publicacionACompartir.usuario_id,
+      emisor_id: user.id,
+      tipo: "compartido",
+      mensaje: `${perfil?.nombre} compartió tu publicación.`,
+    });
+    
   };
   
   
@@ -298,6 +368,13 @@ const [razonReporte, setRazonReporte] = useState("");
         setComentariosPorPublicacion((prev) => ({ ...prev, [pubId]: data || [] }));
       }
     }
+    await enviarNotificacion({
+      receptor_id: publicaciones.find((p) => p.id === pubId)?.usuario_id,
+      emisor_id: user.id,
+      tipo: "comentario",
+      mensaje: `${perfil?.nombre} comentó tu publicación.`,
+    });
+    
   };
 
   const eliminarPublicacion = async (pubId) => {

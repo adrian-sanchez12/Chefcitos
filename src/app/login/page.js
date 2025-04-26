@@ -2,7 +2,6 @@
 import { useState, useRef } from "react";
 import { signIn, supabase } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
 import { Password } from "primereact/password";
 import { Button } from "primereact/button";
